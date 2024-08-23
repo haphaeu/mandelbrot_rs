@@ -1,0 +1,13 @@
+[package]
+name = "mandelbrot_gui"
+version = "0.2.0"
+edition = "2021"
+description = "GUI and CLI for visualisation of the Mandelbrot fractal."
+license = "GPL-2.0-only"
+readme = "readme.md"
+repository = ""
+
+
+[dependencies]
+mandelbrot_cli = { path="../mandelbrot_cli", version="0.1.0" }
+nannou = "0.19.0"
