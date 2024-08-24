@@ -35,4 +35,10 @@ Keyboard shortcuts:
  - `+`, `-` : plus/minus keys to zoom in/out
  - Arrows: use arrows keys to pan the domain
  - `R` : R key to reset to default domain x (-2.5, 1), y (-1, 1)
+
+# TODO
+
+ - [ ] more color schemes.
+ - [ ] switch between color schemes.
+ - [ ] save current view to file
  
