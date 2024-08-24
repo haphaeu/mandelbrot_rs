@@ -1,8 +1,8 @@
 use nannou::image;
 use nannou::prelude::{
-    wgpu, App, Frame, MouseMoved, MousePressed, MouseReleased, Resized, Vec2, WindowEvent,
-	KeyPressed, Key,
-    WindowId, CORNFLOWERBLUE,
+    geom, wgpu, App, Frame, Key, KeyPressed, MouseMoved, MousePressed, MouseReleased, Resized,
+    Vec2, WindowEvent, WindowId,
+    CORNFLOWERBLUE, YELLOW, RED, ORANGE,
 };
 
 use mandelbrot_cli::{mandel, MandelConfig};
@@ -35,13 +35,13 @@ impl Selection {
     }
 }
 impl Default for Selection {
-	fn default() -> Self {
-		Self {
-			is_active: false,
-			start: Vec2::new(0.0, 0.0),
-			end: Vec2::new(0.0, 0.0),
-		}
-	}
+    fn default() -> Self {
+        Self {
+            is_active: false,
+            start: Vec2::new(0.0, 0.0),
+            end: Vec2::new(0.0, 0.0),
+        }
+    }
 }
 
 fn model(app: &App) -> Model {
@@ -62,9 +62,9 @@ fn model(app: &App) -> Model {
         .size([350, 200])
         .format(wgpu::TextureFormat::Rgba8Unorm)
         .build(app.window(_window).unwrap().device());
-		
+
     let selection = Selection::default();
-	
+
     Model {
         _window,
         texture,
@@ -98,6 +98,24 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .points_closed(points);
     }
 
+    // Write some text
+    let [x, y] = mouse2domain(app, model, model.selection.end);
+    let text = format!(
+        "x ({:.3}, {:.3}), y ({:.3}, {:.3}), y\nMouse @ {x:.3}, {y:.3}",
+        model.cfg.xdomain.start,
+        model.cfg.xdomain.end,
+        model.cfg.ydomain.start,
+        model.cfg.ydomain.end,
+    );
+    let winp = app.window_rect().pad(20.0);
+    let text_area = geom::Rect::from_wh(winp.wh()).top_left_of(winp);
+    draw.text(&text)
+        .xy(text_area.xy())
+        .wh(text_area.wh())
+        .align_text_bottom()
+        .left_justify()
+        .color(RED);
+
     // Write to window's frame
     draw.to_frame(app, &frame).unwrap();
 }
@@ -108,7 +126,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
     match event {
         // Window resize - update resolution
         Resized(size) => {
-			print!("{:?}", event);
+            print!("{:?}", event);
             if size != Vec2::ZERO {
                 let size = size.to_array();
                 let sf = app.window(model._window).unwrap().scale_factor();
@@ -120,7 +138,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         // Mouse press - start selection rectangle
         MousePressed(_button) => {
-			print!("{:?}", event);
+            print!("{:?}", event);
             model.selection.is_active = true;
             model.selection.start = Vec2::new(app.mouse.x, app.mouse.y);
             println!(
@@ -134,42 +152,93 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         // Mouse release - end rectangle selection
         // Update x,y domain
         MouseReleased(_button) => {
-			print!("{:?}", event);
+            print!("{:?}", event);
             model.selection.is_active = false;
             if model.selection.is_valid() {
                 print!(
                     " at {:?}- domain updated from {:?}, {:?}",
-					model.selection.end,
-                    model.cfg.xdomain, model.cfg.ydomain
+                    model.selection.end, model.cfg.xdomain, model.cfg.ydomain
                 );
                 update_domain(app, model);
                 println!(" to {:?}, {:?}", model.cfg.xdomain, model.cfg.ydomain);
                 update(app, model);
             }
         }
-		KeyPressed(Key::Up) => {
-			print!("{:?}", event);
-			model.cfg.max_iters *= 2;
-			println!("max_iters updated to {}", model.cfg.max_iters);
-			update(app, model);
-		}
-		KeyPressed(Key::Down) => {		
-			print!("{:?}", event);
-			if model.cfg.max_iters > 32 {
-				model.cfg.max_iters /= 2;
-			}
-			println!("max_iters updated to {}", model.cfg.max_iters);
-			update(app, model);
-		}
-		KeyPressed(Key::R) => {		
-			print!("{:?}", event);
-			println!("reset domain to (-2.5, 1), (-1, 1)");
-			model.cfg.xdomain.start = -2.5;
-			model.cfg.xdomain.end = 1.0;
-			model.cfg.ydomain.start = -1.0;
-			model.cfg.ydomain.end= 1.0;
-			update(app, model);
-		}
+	
+	// ,/. keys increase/reduce max_iters
+        KeyPressed(Key::Period) => {
+	    if model.cfg.max_iters < 20000 {
+		model.cfg.max_iters *= 2;
+	    }
+            println!(" max_iters updated to {}", model.cfg.max_iters);
+            update(app, model);
+        }
+        KeyPressed(Key::Comma) => {
+            if model.cfg.max_iters > 32 {
+                model.cfg.max_iters /= 2;
+            }
+            println!(" max_iters updated to {}", model.cfg.max_iters);
+            update(app, model);
+        }
+
+	// +/- keys zoom in and out
+	KeyPressed(Key::Plus) | KeyPressed(Key::NumpadAdd) => {
+	    let dx = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
+	    let dy = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
+            model.cfg.xdomain.start += dx;
+	    model.cfg.xdomain.end -= dx;
+	    model.cfg.ydomain.start += dy;
+	    model.cfg.ydomain.end -= dy;
+            update(app, model);
+        }
+        KeyPressed(Key::Minus) | KeyPressed(Key::NumpadSubtract) => {
+            let dx = -(model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
+	    let dy = -(model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
+            model.cfg.xdomain.start += dx;
+	    model.cfg.xdomain.end -= dx;
+	    model.cfg.ydomain.start += dy;
+	    model.cfg.ydomain.end -= dy;
+            update(app, model);
+        }
+	
+	// arrows keys pan the domain by half
+        KeyPressed(Key::Up) => {
+	    let offset = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
+            model.cfg.ydomain.start += offset;
+            model.cfg.ydomain.end += offset;
+            update(app, model);
+        }
+	KeyPressed(Key::Down) => {
+	    let offset = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
+            model.cfg.ydomain.start -= offset;
+            model.cfg.ydomain.end -= offset;
+            update(app, model);
+        }
+	KeyPressed(Key::Right) => {
+	    let offset = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
+            model.cfg.xdomain.start -= offset;
+            model.cfg.xdomain.end -= offset;
+            update(app, model);
+        }
+        KeyPressed(Key::Left) => {
+	    let offset = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
+            model.cfg.xdomain.start += offset;
+            model.cfg.xdomain.end += offset;
+            update(app, model);
+        }
+
+	// R key resets domain to default
+        KeyPressed(Key::R) => {
+            model.cfg.xdomain.start = -2.5;
+            model.cfg.xdomain.end = 1.0;
+            model.cfg.ydomain.start = -1.0;
+            model.cfg.ydomain.end = 1.0;
+            update(app, model);
+        }
+	
+	KeyPressed(_key) => {
+	    println!("{:?}", event);
+	}
         _ => (), //println!(" - event not implemented."),
     }
 }
@@ -202,7 +271,7 @@ fn min_max(a: f64, b: f64) -> (f64, f64) {
 }
 
 /// Converts a window-relative `position` into Mandelbrot x,y domain
-fn mouse2domain(app: &App, model: &mut Model, position: Vec2) -> [f64; 2] {
+fn mouse2domain(app: &App, model: &Model, position: Vec2) -> [f64; 2] {
     let [px, py] = position.to_array();
     let (w, h) = app.window(model._window).unwrap().inner_size_points();
 
@@ -231,14 +300,34 @@ fn get_image_buf(
     let mut imgbuf = image::ImageBuffer::new(resx, resy);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
         let c = iters[y as usize][x as usize];
-        let (mut r, mut g, mut b) = (0 as u8, 0 as u8, 0 as u8);
-        if c < max_iters {
-            let c = c as f32;
-            r = (255.0 * c / max_iters as f32) as u8;
-            g = 255 as u8;
-            b = (255.0 * c / (c + 8.0)) as u8;
-        }
+	let (r, g, b) = color_scheme(c, max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
     imgbuf
+}
+
+// Returns a tuple `(r, g, b)` for the RGB color for
+// a number of iterations `c` and `max_iters`.
+fn color_scheme(c: usize, max_iters: usize) -> (u8, u8, u8) {
+
+    let scheme = "bluey";
+    
+    if c < max_iters {
+	let c = c as f64;
+	match scheme {
+	    "greeny" => (
+		(255.0 * c / max_iters as f64) as u8,
+		255 as u8,
+		(255.0 * c / (c + 8.0)) as u8,
+	    ),
+	    "bluey" => (
+		(255.0 * c / max_iters as f64) as u8,
+		(255.0 * c / (c + 8.0)) as u8,
+		255 as u8,
+	    ),
+	    _ => todo!()
+	}
+    } else {
+	(0, 0, 0)
+    }
 }
