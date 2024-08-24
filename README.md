@@ -2,6 +2,8 @@
 
 Implementation in Rust of the Mandelbrot set.
 
+[Mandelbrot set](mandelbrot_cli/fractal.png)
+
 # `mandelbrot_cli`
 
 Low level library and CLI to get a static image of the set.
