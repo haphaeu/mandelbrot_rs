@@ -27,7 +27,9 @@ The image is saved as `fractal.png`
 
 GUI to visualise the set dynamically.
 
-Use the mouse to draw a rectangle to zoom in into a region.
+Drag the mouse to pan, wheel to zoom.
+
+
 
 Keyboard shortcuts:
 
@@ -41,4 +43,4 @@ Keyboard shortcuts:
  - [ ] more color schemes.
  - [ ] switch between color schemes.
  - [ ] save current view to file
- 
+ - [ ] bring back the rectangle
