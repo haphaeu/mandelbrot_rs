@@ -44,3 +44,6 @@ Keyboard shortcuts:
  - [ ] switch between color schemes.
  - [ ] save current view to file
  - [ ] bring back the rectangle
+ - [x] fiz mouse wheel zoom
+ - [ ] touchpad scroll support
+ 

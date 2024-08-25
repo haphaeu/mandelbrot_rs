@@ -1,9 +1,11 @@
 use nannou::image;
 use nannou::prelude::{
     geom, wgpu, App, Frame, Key, KeyPressed, MouseMoved, MousePressed, MouseReleased,
-    MouseScrollDelta::LineDelta, MouseWheel, Resized, Vec2, WindowEvent, WindowId,
+    MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel,
+    Resized, Vec2, WindowEvent, WindowId,
     CORNFLOWERBLUE, RED,
 };
+
 
 use mandelbrot_cli::{mandel, MandelConfig};
 
@@ -126,8 +128,8 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         // Mouse move - update pan, shift image buffer without calling mandel()
         MouseMoved(position) => {
+	    model.pan_mode.end = position;
             if model.pan_mode.is_active {
-                model.pan_mode.end = position;
                 model.pan_mode.draw = model.pan_mode.end - model.pan_mode.start;
             }
         }
@@ -141,17 +143,22 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
 
         // Zoom with mouse wheel
         MouseWheel(LineDelta(_x, y), ..) => {
-            let zoom = 0.10 * y as f64;
+	// | MouseWheel(PixelDelta(PhysicalPosition::<f64>{ _x, y }), ..) => {
+	    let y = ( y/y.abs() ) as f64;
+            let zoom = 0.10 * y;
             let (x0, x1) = (model.cfg.xdomain.start, model.cfg.xdomain.end);
             let (y0, y1) = (model.cfg.ydomain.start, model.cfg.ydomain.end);
             let (dx, dy) = (x1 - x0, y1 - y0);
             let (ox, oy) = (dx * zoom, dy * zoom);
-            model.cfg.xdomain.start += ox;
-            model.cfg.xdomain.end += -ox;
-            model.cfg.ydomain.start += oy;
-            model.cfg.ydomain.end += -oy;
+	    let [x, y] = mouse2domain(app, model, model.pan_mode.end);
+	    let (fx, fy) = ((x-x0)/(x1-x), (y-y0)/(y1-y));
+	    let (ox0, oy0) = (ox*fx/(fx+1.), oy*fy/(fy+1.));
+            model.cfg.xdomain.start += ox0;
+            model.cfg.xdomain.end += -(ox-ox0);
+            model.cfg.ydomain.start += oy0;
+            model.cfg.ydomain.end += -(oy-oy0);
             update(app, model);
-        }
+        },
 
         // ,/. keys increase/reduce max_iters
         KeyPressed(Key::Period) => {
@@ -221,7 +228,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.cfg.ydomain.end = 1.0;
             update(app, model);
         }
-        _ => (),
+        _ => println!("{:?}", event),
     }
 }
 
@@ -252,10 +259,10 @@ fn update_domain(app: &App, model: &mut Model) {
     let [x0, y0] = mouse2domain(app, model, model.pan_mode.start);
     let [x1, y1] = mouse2domain(app, model, model.pan_mode.end);
     let (dx, dy) = (x1 - x0, y1 - y0);
-    model.cfg.xdomain.start += -dx;
-    model.cfg.xdomain.end += -dx;
-    model.cfg.ydomain.start += dy;
-    model.cfg.ydomain.end += dy;
+    model.cfg.xdomain.start -= dx;
+    model.cfg.xdomain.end -= dx;
+    model.cfg.ydomain.start -= dy;
+    model.cfg.ydomain.end -= dy;
 }
 
 /// Converts a window-relative `position` into Mandelbrot x,y domain
@@ -287,7 +294,9 @@ fn get_image_buf(
 
     let mut imgbuf = image::ImageBuffer::new(resx, resy);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-        let c = iters[y as usize][x as usize];
+	// imgbuf is indexed top-left to bottom-right,
+	// hence the y-index must be reversed:
+        let c = iters[(resy-y-1) as usize][x as usize];
         let (r, g, b) = color_scheme(c, max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
