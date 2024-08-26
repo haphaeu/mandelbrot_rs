@@ -18,7 +18,26 @@ struct Model {
     texture: wgpu::Texture,
     cfg: MandelConfig,
     pan_mode: PanMode,
+    color_scheme: Box<dyn MandelRGB>,
     float_format_precision: usize,
+}
+
+// Color schemes ////////////////////////////////////////////////////
+trait MandelRGB {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8);
+}
+
+struct Bluey {}
+impl MandelRGB for Bluey {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        (2, 3, 4)
+    }
+}
+struct Greeny {}
+impl MandelRGB for Greeny {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        (2, 3, 4)
+    }
 }
 
 /// Pan image by dragging the mouse,
@@ -39,6 +58,8 @@ impl Default for PanMode {
     }
 }
 
+// //////////////////////////////////////////////////////////////////
+
 fn model(app: &App) -> Model {
     // Create a new window! Store the ID so we can refer to it later.
     let window = app
@@ -57,6 +78,7 @@ fn model(app: &App) -> Model {
 
     let cfg = MandelConfig::default();
     let pan_mode = PanMode::default();
+    let color_scheme = Box::new(Bluey {} );
     let float_format_precision = 3;
 
     Model {
@@ -64,6 +86,7 @@ fn model(app: &App) -> Model {
         texture,
         cfg,
         pan_mode,
+        color_scheme,
         float_format_precision,
     }
 }
