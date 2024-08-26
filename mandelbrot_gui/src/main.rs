@@ -1,11 +1,10 @@
 use nannou::image;
 use nannou::prelude::{
     geom, wgpu, App, Frame, Key, KeyPressed, MouseMoved, MousePressed, MouseReleased,
-    MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel,
-    Resized, Vec2, WindowEvent, WindowId,
-    CORNFLOWERBLUE, RED,
+    MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel, Resized, Vec2,
+    WindowEvent, WindowId, CORNFLOWERBLUE, RED,
 };
-
+use nannou::winit::dpi::PhysicalPosition;
 
 use mandelbrot_cli::{mandel, MandelConfig};
 
@@ -79,19 +78,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     // Write some text
     let [x, y] = mouse2domain(app, model, model.pan_mode.end);
+    let p = model.float_format_precision;
     let text = format!(
-        "x ({:.*}, {:.*}), y ({:.*}, {:.*}), y\nMouse @ {:.*}, {:.*}\nMax iters: {}",
-        model.float_format_precision,
+        "x ({:.p$}, {:.p$}), y ({:.p$}, {:.p$}), y\nMouse @ {:.p$}, {:.p$}\nMax iters: {}",
         model.cfg.xdomain.start,
-        model.float_format_precision,
         model.cfg.xdomain.end,
-        model.float_format_precision,
         model.cfg.ydomain.start,
-        model.float_format_precision,
         model.cfg.ydomain.end,
-        model.float_format_precision,
         x,
-        model.float_format_precision,
         y,
         model.cfg.max_iters,
     );
@@ -128,7 +122,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         // Mouse move - update pan, shift image buffer without calling mandel()
         MouseMoved(position) => {
-	    model.pan_mode.end = position;
+            model.pan_mode.end = position;
             if model.pan_mode.is_active {
                 model.pan_mode.draw = model.pan_mode.end - model.pan_mode.start;
             }
@@ -137,28 +131,20 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         MouseReleased(_button) => {
             model.pan_mode.is_active = false;
             model.pan_mode.draw = Vec2::ZERO;
-            update_domain(app, model);
+            mouse_pan(app, model);
             update(app, model);
         }
 
         // Zoom with mouse wheel
         MouseWheel(LineDelta(_x, y), ..) => {
-	// | MouseWheel(PixelDelta(PhysicalPosition::<f64>{ _x, y }), ..) => {
-	    let y = ( y/y.abs() ) as f64;
-            let zoom = 0.10 * y;
-            let (x0, x1) = (model.cfg.xdomain.start, model.cfg.xdomain.end);
-            let (y0, y1) = (model.cfg.ydomain.start, model.cfg.ydomain.end);
-            let (dx, dy) = (x1 - x0, y1 - y0);
-            let (ox, oy) = (dx * zoom, dy * zoom);
-	    let [x, y] = mouse2domain(app, model, model.pan_mode.end);
-	    let (fx, fy) = ((x-x0)/(x1-x), (y-y0)/(y1-y));
-	    let (ox0, oy0) = (ox*fx/(fx+1.), oy*fy/(fy+1.));
-            model.cfg.xdomain.start += ox0;
-            model.cfg.xdomain.end += -(ox-ox0);
-            model.cfg.ydomain.start += oy0;
-            model.cfg.ydomain.end += -(oy-oy0);
+            mouse_zoom(app, model, y as f64);
             update(app, model);
-        },
+        }
+		// TODO! test this
+        MouseWheel(PixelDelta(PhysicalPosition { x: _x, y }), ..) => {
+            mouse_zoom(app, model, y);
+            update(app, model);
+        }
 
         // ,/. keys increase/reduce max_iters
         KeyPressed(Key::Period) => {
@@ -176,47 +162,29 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
 
         // +/- keys zoom in and out
         KeyPressed(Key::Plus) | KeyPressed(Key::NumpadAdd) => {
-            let dx = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
-            let dy = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
-            model.cfg.xdomain.start += dx;
-            model.cfg.xdomain.end -= dx;
-            model.cfg.ydomain.start += dy;
-            model.cfg.ydomain.end -= dy;
+            keyboard_zoom(model, 0.25);
             update(app, model);
         }
         KeyPressed(Key::Minus) | KeyPressed(Key::NumpadSubtract) => {
-            let dx = -(model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
-            let dy = -(model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
-            model.cfg.xdomain.start += dx;
-            model.cfg.xdomain.end -= dx;
-            model.cfg.ydomain.start += dy;
-            model.cfg.ydomain.end -= dy;
+            keyboard_zoom(model, -0.25);
             update(app, model);
         }
 
         // arrows keys pan the domain by half
         KeyPressed(Key::Up) => {
-            let offset = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
-            model.cfg.ydomain.start += offset;
-            model.cfg.ydomain.end += offset;
+            keyboard_pan(model, 0.0, -0.25);
             update(app, model);
         }
         KeyPressed(Key::Down) => {
-            let offset = (model.cfg.ydomain.end - model.cfg.ydomain.start) / 4.0;
-            model.cfg.ydomain.start -= offset;
-            model.cfg.ydomain.end -= offset;
+            keyboard_pan(model, 0.0, 0.25);
             update(app, model);
         }
         KeyPressed(Key::Right) => {
-            let offset = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
-            model.cfg.xdomain.start -= offset;
-            model.cfg.xdomain.end -= offset;
+            keyboard_pan(model, -0.25, 0.0);
             update(app, model);
         }
         KeyPressed(Key::Left) => {
-            let offset = (model.cfg.xdomain.end - model.cfg.xdomain.start) / 4.0;
-            model.cfg.xdomain.start += offset;
-            model.cfg.xdomain.end += offset;
+            keyboard_pan(model, 0.25, 0.0);
             update(app, model);
         }
 
@@ -254,8 +222,35 @@ fn get_ffmt_precision(model: &Model) -> usize {
     precision
 }
 
-/// Update mandelbrot set x and y domains after pan_mode with mouse
-fn update_domain(app: &App, model: &mut Model) {
+/// Zoom with mouse. Update mandelbrot set x and y domains.
+fn mouse_zoom(app: &App, model: &mut Model, delta: f64) {
+    let y = delta / delta.abs();
+    let zoom = 0.10 * y;
+    let (x0, x1) = (model.cfg.xdomain.start, model.cfg.xdomain.end);
+    let (y0, y1) = (model.cfg.ydomain.start, model.cfg.ydomain.end);
+    let (dx, dy) = (x1 - x0, y1 - y0);
+    let (ox, oy) = (dx * zoom, dy * zoom);
+    let [x, y] = mouse2domain(app, model, model.pan_mode.end);
+    let (fx, fy) = ((x - x0) / (x1 - x), (y - y0) / (y1 - y));
+    let (ox0, oy0) = (ox * fx / (fx + 1.), oy * fy / (fy + 1.));
+    model.cfg.xdomain.start += ox0;
+    model.cfg.xdomain.end += -(ox - ox0);
+    model.cfg.ydomain.start += oy0;
+    model.cfg.ydomain.end += -(oy - oy0);
+}
+
+/// Zoom with keyboard. Update mandelbrot set x and y domains.
+fn keyboard_zoom(model: &mut Model, zoom: f64) {
+    let dx = zoom * (model.cfg.xdomain.end - model.cfg.xdomain.start);
+    let dy = zoom * (model.cfg.ydomain.end - model.cfg.ydomain.start);
+    model.cfg.xdomain.start += dx;
+    model.cfg.xdomain.end -= dx;
+    model.cfg.ydomain.start += dy;
+    model.cfg.ydomain.end -= dy;
+}
+
+/// Pan with mouse. Update mandelbrot set x and y domains.
+fn mouse_pan(app: &App, model: &mut Model) {
     let [x0, y0] = mouse2domain(app, model, model.pan_mode.start);
     let [x1, y1] = mouse2domain(app, model, model.pan_mode.end);
     let (dx, dy) = (x1 - x0, y1 - y0);
@@ -263,6 +258,16 @@ fn update_domain(app: &App, model: &mut Model) {
     model.cfg.xdomain.end -= dx;
     model.cfg.ydomain.start -= dy;
     model.cfg.ydomain.end -= dy;
+}
+
+/// Pan with keyboard. Update mandelbrot set x and y domains.
+fn keyboard_pan(model: &mut Model, panx: f64, pany: f64) {
+    let xoffset = panx * (model.cfg.xdomain.end - model.cfg.xdomain.start);
+    let yoffset = pany * (model.cfg.ydomain.end - model.cfg.ydomain.start);
+    model.cfg.xdomain.start += xoffset;
+    model.cfg.xdomain.end += xoffset;
+    model.cfg.ydomain.start += yoffset;
+    model.cfg.ydomain.end += yoffset;
 }
 
 /// Converts a window-relative `position` into Mandelbrot x,y domain
@@ -285,6 +290,7 @@ fn mouse2domain(app: &App, model: &Model, position: Vec2) -> [f64; 2] {
     [x_new, y_new]
 }
 
+/// Return a buffer with the image of the mandelbrot set
 fn get_image_buf(
     iters: &Vec<Vec<usize>>,
     max_iters: usize,
@@ -294,9 +300,9 @@ fn get_image_buf(
 
     let mut imgbuf = image::ImageBuffer::new(resx, resy);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-	// imgbuf is indexed top-left to bottom-right,
-	// hence the y-index must be reversed:
-        let c = iters[(resy-y-1) as usize][x as usize];
+        // imgbuf is indexed top-left to bottom-right,
+        // hence the y-index must be reversed:
+        let c = iters[(resy - y - 1) as usize][x as usize];
         let (r, g, b) = color_scheme(c, max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
