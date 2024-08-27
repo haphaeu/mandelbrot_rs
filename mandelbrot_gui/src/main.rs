@@ -1,9 +1,8 @@
 use nannou::image;
 use nannou::prelude::{
-    geom, wgpu, App, Frame, Key, KeyPressed, MouseMoved, MousePressed, MouseReleased,
-    MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel, Resized, Vec2,
-    WindowEvent, WindowId, CORNFLOWERBLUE, RED, 
-	LoopMode, Update,
+    geom, wgpu, App, Frame, Key, KeyPressed, LoopMode, MouseMoved, MousePressed, MouseReleased,
+    MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel, Resized, Update, Vec2,
+    WindowEvent, WindowId, BLACK, RED,
 };
 use nannou::winit::dpi::PhysicalPosition;
 
@@ -11,9 +10,9 @@ use mandelbrot_cli::{mandel, MandelConfig};
 
 fn main() {
     nannou::app(model)
-		.loop_mode(LoopMode::Wait)
-		.update(update)
-		.run();
+        .loop_mode(LoopMode::Wait)
+        .update(update)
+        .run();
 }
 
 struct Model {
@@ -24,34 +23,37 @@ struct Model {
     pan_mode: PanMode,
     color_schemes: ColorSchemes,
     float_format_precision: usize,
+    flag_update: bool,
 }
 
 struct ColorSchemes {
-	color_schemes: Vec<Box<dyn MandelRGB>>,
-	index_current: usize,
+    color_schemes: Vec<Box<dyn MandelRGB>>,
+    index_current: usize,
 }
 impl ColorSchemes {
-	fn new() -> Self {
-		Self {
-			color_schemes: vec![
-				Box::new(Bluey {}),
-				Box::new(Greeny {}),
-				Box::new(Purply {}),
-				Box::new(Weirdy {}),
-			],
-			index_current: 0,
-		}
-	}
-	fn get(&self) -> &Box<dyn MandelRGB> {
-		&self.color_schemes[self.index_current]
-	}
-	fn next(&mut self) {
-		if self.index_current == self.color_schemes.len() - 1 {
-			self.index_current = 0;
-		} else {
-			self.index_current += 1;
-		}
-	}
+    fn new() -> Self {
+        Self {
+            color_schemes: vec![
+                Box::new(Bluey {}),
+                Box::new(Greeny {}),
+                Box::new(Purply {}),
+                Box::new(Weirdy {}),
+                Box::new(GreyeyDark {}),
+                Box::new(GreyeyLight {}),
+            ],
+            index_current: 0,
+        }
+    }
+    fn get(&self) -> &Box<dyn MandelRGB> {
+        &self.color_schemes[self.index_current]
+    }
+    fn next(&mut self) {
+        if self.index_current == self.color_schemes.len() - 1 {
+            self.index_current = 0;
+        } else {
+            self.index_current += 1;
+        }
+    }
 }
 // Color schemes ////////////////////////////////////////////////////
 //               ///////////////////////////////
@@ -67,46 +69,94 @@ struct Bluey {}
 impl MandelRGB for Bluey {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
         if c < max_iters {
-			let c = c as f64;
-			( (255.0 * c / max_iters as f64) as u8,
-              (255.0 * c / (c + 8.0)) as u8,
-              255 as u8 )
-		} else { (0, 0, 0) }
+            let c = c as f64;
+            (
+                (255.0 * c / max_iters as f64) as u8,
+                (255.0 * c / (c + 8.0)) as u8,
+                255 as u8,
+            )
+        } else {
+            (0, 0, 0)
+        }
     }
 }
 struct Greeny {}
 impl MandelRGB for Greeny {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-		if c < max_iters {
-			let c = c as f64;
-			( (255.0 * c / max_iters as f64) as u8,
-              255 as u8,
-              (255.0 * c / (c + 8.0)) as u8 )
-		} else { (0, 0, 0) }
+        if c < max_iters {
+            let c = c as f64;
+            (
+                (255.0 * c / max_iters as f64) as u8,
+                255 as u8,
+                (255.0 * c / (c + 8.0)) as u8,
+            )
+        } else {
+            (0, 0, 0)
+        }
     }
 }
 struct Purply {}
 impl MandelRGB for Purply {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-		if c < max_iters {
-			let c = c as f64;
-			let m = max_iters as f64;
-			( (255.0 * c / m) as u8,
-              (255.0 * c / m) as u8,
-              (255.0 * c / (c + 8.0)) as u8 )
-		} else { (0, 0, 0) }
+        if c < max_iters {
+            let c = c as f64;
+            let m = max_iters as f64;
+            (
+                (255.0 * c / m) as u8,
+                (255.0 * c / m) as u8,
+                (255.0 * c / (c + 8.0)) as u8,
+            )
+        } else {
+            (0, 0, 0)
+        }
     }
 }
 struct Weirdy {}
 impl MandelRGB for Weirdy {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-		if c < max_iters {
-			let c = c as f64;
-			let m = max_iters as f64;
-			( (255.0 * (2.0 * c / m) - 1.0).abs() as u8,
-              (255.0 * c / m) as u8,
-              (255.0 * c / (c + 8.0)) as u8 )
-		} else { (0, 0, 0) }
+        if c < max_iters {
+            let c = c as f64;
+            let m = max_iters as f64;
+            (
+                (255.0 * (2.0 * c / m) - 1.0).abs() as u8,
+                (255.0 * c / m) as u8,
+                (255.0 * c / (c + 8.0)) as u8,
+            )
+        } else {
+            (0, 0, 0)
+        }
+    }
+}
+struct GreyeyLight {}
+impl MandelRGB for GreyeyLight {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        if c < max_iters {
+            let c = c as f64;
+            let m = max_iters as f64;
+            (
+                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
+                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
+                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
+            )
+        } else {
+            (255, 255, 255)
+        }
+    }
+}
+struct GreyeyDark {}
+impl MandelRGB for GreyeyDark {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        if c < max_iters {
+            let c = c as f64;
+            let m = max_iters as f64;
+            (
+                (255.0 * c / m) as u8,
+                (255.0 * c / m) as u8,
+                (255.0 * c / m) as u8,
+            )
+        } else {
+            (0, 0, 0)
+        }
     }
 }
 
@@ -146,25 +196,38 @@ fn model(app: &App) -> Model {
         .format(wgpu::TextureFormat::Rgba8Unorm)
         .build(app.window(window).unwrap().device());
 
-    let cfg = MandelConfig::default();
-    let pan_mode = PanMode::default();
-    let color_schemes = ColorSchemes::new();
-	let color_scheme_idx = 0;
-    let float_format_precision = 3;
-
     Model {
         window,
         texture,
-        cfg,
-        pan_mode,
-        color_schemes,
-        float_format_precision,
+        cfg: MandelConfig::default(),
+        pan_mode: PanMode::default(),
+        color_schemes: ColorSchemes::new(),
+        float_format_precision: 3,
+        flag_update: false,
+    }
+}
+
+fn update(app: &App, model: &mut Model, _update: Update) {
+    //println!("{_update:?}");
+    update_mandel(app, model)
+}
+
+/// Update image after changes in `model.cfg`
+fn update_mandel(app: &App, model: &mut Model) {
+    if model.flag_update {
+        let iters = mandel(model.cfg);
+        let imgbuf = get_image_buf(&iters, model);
+        let image = image::DynamicImage::ImageRgb8(imgbuf);
+        let texture = wgpu::Texture::from_image(app, &image);
+        model.float_format_precision = get_ffmt_precision(model);
+        model.texture = texture;
+        model.flag_update = false;
     }
 }
 
 // Draw the state of your `Model` into the given `Frame` here.
 fn view(app: &App, model: &Model, frame: Frame) {
-    frame.clear(CORNFLOWERBLUE);
+    frame.clear(BLACK);
     let draw = app.draw();
 
     // Draw the image
@@ -174,7 +237,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let [x, y] = mouse2domain(app, model, model.pan_mode.end);
     let p = model.float_format_precision;
     let text = format!(
-        "x ({:.p$}, {:.p$}), y ({:.p$}, {:.p$}), y\nMouse @ {:.p$}, {:.p$}\nMax iters: {}",
+        "x ({:.p$}, {:.p$}), y ({:.p$}, {:.p$}) \nMouse @ {:.p$}, {:.p$}\nMax iters: {}",
         model.cfg.xdomain.start,
         model.cfg.xdomain.end,
         model.cfg.ydomain.start,
@@ -198,6 +261,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
 /// Handle events related to the window and update the model if necessary
 fn event(app: &App, model: &mut Model, event: WindowEvent) {
+    //println!("{event:?}");
     match event {
         // Window resize - update resolution
         Resized(size) => {
@@ -206,7 +270,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
                 let sf = app.window(model.window).unwrap().scale_factor();
                 model.cfg.resolution.x = (sf * size[0]) as usize;
                 model.cfg.resolution.y = (sf * size[1]) as usize;
-                //update(app, model);
+                model.flag_update = true;
             }
         }
         // Mouse press - start pan
@@ -226,66 +290,56 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.pan_mode.is_active = false;
             model.pan_mode.draw = Vec2::ZERO;
             mouse_pan(app, model);
-            //update(app, model);
         }
 
         // Zoom with mouse wheel
         MouseWheel(LineDelta(_x, y), ..) => {
             mouse_zoom(app, model, y as f64);
-            //update(app, model);
         }
-		// TODO! test this
         MouseWheel(PixelDelta(PhysicalPosition { x: _x, y }), ..) => {
             mouse_zoom(app, model, y);
-            //update(app, model);
         }
 
         // ,/. keys increase/reduce max_iters
         KeyPressed(Key::Period) => {
             if model.cfg.max_iters < 20000 {
                 model.cfg.max_iters *= 2;
+                model.flag_update = true;
             }
-            //update(app, model);
         }
         KeyPressed(Key::Comma) => {
             if model.cfg.max_iters > 32 {
                 model.cfg.max_iters /= 2;
+                model.flag_update = true;
             }
-            //update(app, model);
         }
 
         // +/- keys zoom in and out
         KeyPressed(Key::Plus) | KeyPressed(Key::NumpadAdd) => {
             keyboard_zoom(model, 0.25);
-            //update(app, model);
         }
         KeyPressed(Key::Minus) | KeyPressed(Key::NumpadSubtract) => {
             keyboard_zoom(model, -0.25);
-            //update(app, model);
         }
 
         // arrows keys pan the domain by half
         KeyPressed(Key::Up) => {
             keyboard_pan(model, 0.0, -0.25);
-            //update(app, model);
         }
         KeyPressed(Key::Down) => {
             keyboard_pan(model, 0.0, 0.25);
-            //update(app, model);
         }
         KeyPressed(Key::Right) => {
             keyboard_pan(model, -0.25, 0.0);
-            //update(app, model);
         }
         KeyPressed(Key::Left) => {
             keyboard_pan(model, 0.25, 0.0);
-            //update(app, model);
         }
-		
-		// Change color scheme
-		KeyPressed(Key::C) => {
+
+        // Change color scheme
+        KeyPressed(Key::C) => {
             model.color_schemes.next();
-            //update(app, model);
+            model.flag_update = true;
         }
 
         // R key resets domain to default
@@ -294,25 +348,10 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.cfg.xdomain.end = 1.0;
             model.cfg.ydomain.start = -1.0;
             model.cfg.ydomain.end = 1.0;
-            //update(app, model);
+            model.flag_update = true;
         }
-        _ => println!("{:?}", event),
+        _ => (),
     }
-}
-
-fn update(app: &App, model: &mut Model, update: Update) {
-    println!("{:?}", update);
-	_update(app, model)
-}
-
-/// Update image after changes in `model.cfg`
-fn _update(app: &App, model: &mut Model) {
-    let iters = mandel(model.cfg);
-    let imgbuf = get_image_buf(&iters, model);
-    let image = image::DynamicImage::ImageRgb8(imgbuf);
-    let texture = wgpu::Texture::from_image(app, &image);
-    model.float_format_precision = get_ffmt_precision(model);
-    model.texture = texture;
 }
 
 /// Return float format precision based on the current domain
@@ -329,6 +368,9 @@ fn get_ffmt_precision(model: &Model) -> usize {
 
 /// Zoom with mouse. Update mandelbrot set x and y domains.
 fn mouse_zoom(app: &App, model: &mut Model, delta: f64) {
+    if delta.abs() < f64::MIN_POSITIVE {
+        return;
+    }
     let y = delta / delta.abs();
     let zoom = 0.10 * y;
     let (x0, x1) = (model.cfg.xdomain.start, model.cfg.xdomain.end);
@@ -342,6 +384,7 @@ fn mouse_zoom(app: &App, model: &mut Model, delta: f64) {
     model.cfg.xdomain.end += -(ox - ox0);
     model.cfg.ydomain.start += oy0;
     model.cfg.ydomain.end += -(oy - oy0);
+    model.flag_update = true;
 }
 
 /// Zoom with keyboard. Update mandelbrot set x and y domains.
@@ -352,6 +395,7 @@ fn keyboard_zoom(model: &mut Model, zoom: f64) {
     model.cfg.xdomain.end -= dx;
     model.cfg.ydomain.start += dy;
     model.cfg.ydomain.end -= dy;
+    model.flag_update = true;
 }
 
 /// Pan with mouse. Update mandelbrot set x and y domains.
@@ -363,6 +407,7 @@ fn mouse_pan(app: &App, model: &mut Model) {
     model.cfg.xdomain.end -= dx;
     model.cfg.ydomain.start -= dy;
     model.cfg.ydomain.end -= dy;
+    model.flag_update = true;
 }
 
 /// Pan with keyboard. Update mandelbrot set x and y domains.
@@ -373,6 +418,7 @@ fn keyboard_pan(model: &mut Model, panx: f64, pany: f64) {
     model.cfg.xdomain.end += xoffset;
     model.cfg.ydomain.start += yoffset;
     model.cfg.ydomain.end += yoffset;
+    model.flag_update = true;
 }
 
 /// Converts a window-relative `position` into Mandelbrot x,y domain
@@ -398,9 +444,8 @@ fn mouse2domain(app: &App, model: &Model, position: Vec2) -> [f64; 2] {
 /// Return a buffer with the image of the mandelbrot set
 fn get_image_buf(
     iters: &Vec<Vec<usize>>,
-	model: &Model,
+    model: &Model,
 ) -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
-	
     let resy = iters.len() as u32;
     let resx = iters[0].len() as u32;
 
@@ -409,9 +454,7 @@ fn get_image_buf(
         // imgbuf is indexed top-left to bottom-right,
         // hence the y-index must be reversed:
         let c = iters[(resy - y - 1) as usize][x as usize];
-        let (r, g, b) = model
-			.color_schemes.get()
-			.rgb(c, model.cfg.max_iters);
+        let (r, g, b) = model.color_schemes.get().rgb(c, model.cfg.max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
     imgbuf

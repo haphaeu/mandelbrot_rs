@@ -203,7 +203,6 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
 }
 
 pub fn save_image(iters: &Vec<Vec<usize>>, max_iters: usize) {
-    
     let resy = iters.len() as u32;
     let resx = iters[0].len() as u32;
 
