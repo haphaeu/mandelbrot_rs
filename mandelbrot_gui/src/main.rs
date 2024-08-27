@@ -2,14 +2,18 @@ use nannou::image;
 use nannou::prelude::{
     geom, wgpu, App, Frame, Key, KeyPressed, MouseMoved, MousePressed, MouseReleased,
     MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel, Resized, Vec2,
-    WindowEvent, WindowId, CORNFLOWERBLUE, RED,
+    WindowEvent, WindowId, CORNFLOWERBLUE, RED, 
+	LoopMode, Update,
 };
 use nannou::winit::dpi::PhysicalPosition;
 
 use mandelbrot_cli::{mandel, MandelConfig};
 
 fn main() {
-    nannou::app(model).run();
+    nannou::app(model)
+		.loop_mode(LoopMode::Wait)
+		.update(update)
+		.run();
 }
 
 struct Model {
@@ -202,7 +206,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
                 let sf = app.window(model.window).unwrap().scale_factor();
                 model.cfg.resolution.x = (sf * size[0]) as usize;
                 model.cfg.resolution.y = (sf * size[1]) as usize;
-                update(app, model);
+                //update(app, model);
             }
         }
         // Mouse press - start pan
@@ -222,18 +226,18 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.pan_mode.is_active = false;
             model.pan_mode.draw = Vec2::ZERO;
             mouse_pan(app, model);
-            update(app, model);
+            //update(app, model);
         }
 
         // Zoom with mouse wheel
         MouseWheel(LineDelta(_x, y), ..) => {
             mouse_zoom(app, model, y as f64);
-            update(app, model);
+            //update(app, model);
         }
 		// TODO! test this
         MouseWheel(PixelDelta(PhysicalPosition { x: _x, y }), ..) => {
             mouse_zoom(app, model, y);
-            update(app, model);
+            //update(app, model);
         }
 
         // ,/. keys increase/reduce max_iters
@@ -241,47 +245,47 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             if model.cfg.max_iters < 20000 {
                 model.cfg.max_iters *= 2;
             }
-            update(app, model);
+            //update(app, model);
         }
         KeyPressed(Key::Comma) => {
             if model.cfg.max_iters > 32 {
                 model.cfg.max_iters /= 2;
             }
-            update(app, model);
+            //update(app, model);
         }
 
         // +/- keys zoom in and out
         KeyPressed(Key::Plus) | KeyPressed(Key::NumpadAdd) => {
             keyboard_zoom(model, 0.25);
-            update(app, model);
+            //update(app, model);
         }
         KeyPressed(Key::Minus) | KeyPressed(Key::NumpadSubtract) => {
             keyboard_zoom(model, -0.25);
-            update(app, model);
+            //update(app, model);
         }
 
         // arrows keys pan the domain by half
         KeyPressed(Key::Up) => {
             keyboard_pan(model, 0.0, -0.25);
-            update(app, model);
+            //update(app, model);
         }
         KeyPressed(Key::Down) => {
             keyboard_pan(model, 0.0, 0.25);
-            update(app, model);
+            //update(app, model);
         }
         KeyPressed(Key::Right) => {
             keyboard_pan(model, -0.25, 0.0);
-            update(app, model);
+            //update(app, model);
         }
         KeyPressed(Key::Left) => {
             keyboard_pan(model, 0.25, 0.0);
-            update(app, model);
+            //update(app, model);
         }
 		
 		// Change color scheme
 		KeyPressed(Key::C) => {
             model.color_schemes.next();
-            update(app, model);
+            //update(app, model);
         }
 
         // R key resets domain to default
@@ -290,14 +294,19 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.cfg.xdomain.end = 1.0;
             model.cfg.ydomain.start = -1.0;
             model.cfg.ydomain.end = 1.0;
-            update(app, model);
+            //update(app, model);
         }
         _ => println!("{:?}", event),
     }
 }
 
+fn update(app: &App, model: &mut Model, update: Update) {
+    println!("{:?}", update);
+	_update(app, model)
+}
+
 /// Update image after changes in `model.cfg`
-fn update(app: &App, model: &mut Model) {
+fn _update(app: &App, model: &mut Model) {
     let iters = mandel(model.cfg);
     let imgbuf = get_image_buf(&iters, model);
     let image = image::DynamicImage::ImageRgb8(imgbuf);
