@@ -2,7 +2,7 @@
 
 Implementation in Rust of the Mandelbrot set.
 
-[Mandelbrot set](mandelbrot_cli/fractal.png)
+![Mandelbrot set](fractal.png)
 
 # `mandelbrot_cli`
 
@@ -46,5 +46,5 @@ Keyboard shortcuts:
  - [ ] bring back the rectangle
  - [x] fiz mouse wheel zoom
  - [x] touchpad scroll support
- - [ ] avoid touchpad scroll event flood
+ - [x] avoid touchpad scroll event flood
  
