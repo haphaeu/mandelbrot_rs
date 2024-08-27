@@ -30,20 +30,21 @@ GUI to visualise the set dynamically.
 Drag the mouse to pan, wheel to zoom.
 
 
-
 Keyboard shortcuts:
 
  - `,`, `.` : period/comma to reduce/increase `max_iters`
  - `+`, `-` : plus/minus keys to zoom in/out
  - Arrows: use arrows keys to pan the domain
  - `R` : R key to reset to default domain x (-2.5, 1), y (-1, 1)
+ - `C` : change color scheme
 
 # TODO
 
- - [ ] more color schemes.
- - [ ] switch between color schemes.
+ - [x] more color schemes.
+ - [x] switch between color schemes.
  - [ ] save current view to file
  - [ ] bring back the rectangle
  - [x] fiz mouse wheel zoom
- - [ ] touchpad scroll support
+ - [x] touchpad scroll support
+ - [ ] avoid touchpad scroll event flood
  

@@ -18,11 +18,43 @@ struct Model {
     texture: wgpu::Texture,
     cfg: MandelConfig,
     pan_mode: PanMode,
-    color_scheme: Box<dyn MandelRGB>,
+    color_schemes: ColorSchemes,
     float_format_precision: usize,
 }
 
+struct ColorSchemes {
+	color_schemes: Vec<Box<dyn MandelRGB>>,
+	index_current: usize,
+}
+impl ColorSchemes {
+	fn new() -> Self {
+		Self {
+			color_schemes: vec![
+				Box::new(Bluey {}),
+				Box::new(Greeny {}),
+				Box::new(Purply {}),
+				Box::new(Weirdy {}),
+			],
+			index_current: 0,
+		}
+	}
+	fn get(&self) -> &Box<dyn MandelRGB> {
+		&self.color_schemes[self.index_current]
+	}
+	fn next(&mut self) {
+		if self.index_current == self.color_schemes.len() - 1 {
+			self.index_current = 0;
+		} else {
+			self.index_current += 1;
+		}
+	}
+}
 // Color schemes ////////////////////////////////////////////////////
+//               ///////////////////////////////
+// Color schemes must be implemented as structs that implement
+// the `MandelRGB` trait, ie, they must have a function that
+// take 2 `usize` parameters, `c` and `max_iters`, and return a
+// 3-tuple of type `u8` with the RGB values of a color.
 trait MandelRGB {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8);
 }
@@ -30,13 +62,47 @@ trait MandelRGB {
 struct Bluey {}
 impl MandelRGB for Bluey {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        (2, 3, 4)
+        if c < max_iters {
+			let c = c as f64;
+			( (255.0 * c / max_iters as f64) as u8,
+              (255.0 * c / (c + 8.0)) as u8,
+              255 as u8 )
+		} else { (0, 0, 0) }
     }
 }
 struct Greeny {}
 impl MandelRGB for Greeny {
     fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        (2, 3, 4)
+		if c < max_iters {
+			let c = c as f64;
+			( (255.0 * c / max_iters as f64) as u8,
+              255 as u8,
+              (255.0 * c / (c + 8.0)) as u8 )
+		} else { (0, 0, 0) }
+    }
+}
+struct Purply {}
+impl MandelRGB for Purply {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+		if c < max_iters {
+			let c = c as f64;
+			let m = max_iters as f64;
+			( (255.0 * c / m) as u8,
+              (255.0 * c / m) as u8,
+              (255.0 * c / (c + 8.0)) as u8 )
+		} else { (0, 0, 0) }
+    }
+}
+struct Weirdy {}
+impl MandelRGB for Weirdy {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+		if c < max_iters {
+			let c = c as f64;
+			let m = max_iters as f64;
+			( (255.0 * (2.0 * c / m) - 1.0).abs() as u8,
+              (255.0 * c / m) as u8,
+              (255.0 * c / (c + 8.0)) as u8 )
+		} else { (0, 0, 0) }
     }
 }
 
@@ -78,7 +144,8 @@ fn model(app: &App) -> Model {
 
     let cfg = MandelConfig::default();
     let pan_mode = PanMode::default();
-    let color_scheme = Box::new(Bluey {} );
+    let color_schemes = ColorSchemes::new();
+	let color_scheme_idx = 0;
     let float_format_precision = 3;
 
     Model {
@@ -86,7 +153,7 @@ fn model(app: &App) -> Model {
         texture,
         cfg,
         pan_mode,
-        color_scheme,
+        color_schemes,
         float_format_precision,
     }
 }
@@ -210,6 +277,12 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             keyboard_pan(model, 0.25, 0.0);
             update(app, model);
         }
+		
+		// Change color scheme
+		KeyPressed(Key::C) => {
+            model.color_schemes.next();
+            update(app, model);
+        }
 
         // R key resets domain to default
         KeyPressed(Key::R) => {
@@ -226,7 +299,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
 /// Update image after changes in `model.cfg`
 fn update(app: &App, model: &mut Model) {
     let iters = mandel(model.cfg);
-    let imgbuf = get_image_buf(&iters, model.cfg.max_iters);
+    let imgbuf = get_image_buf(&iters, model);
     let image = image::DynamicImage::ImageRgb8(imgbuf);
     let texture = wgpu::Texture::from_image(app, &image);
     model.float_format_precision = get_ffmt_precision(model);
@@ -316,8 +389,9 @@ fn mouse2domain(app: &App, model: &Model, position: Vec2) -> [f64; 2] {
 /// Return a buffer with the image of the mandelbrot set
 fn get_image_buf(
     iters: &Vec<Vec<usize>>,
-    max_iters: usize,
+	model: &Model,
 ) -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+	
     let resy = iters.len() as u32;
     let resx = iters[0].len() as u32;
 
@@ -326,33 +400,10 @@ fn get_image_buf(
         // imgbuf is indexed top-left to bottom-right,
         // hence the y-index must be reversed:
         let c = iters[(resy - y - 1) as usize][x as usize];
-        let (r, g, b) = color_scheme(c, max_iters);
+        let (r, g, b) = model
+			.color_schemes.get()
+			.rgb(c, model.cfg.max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
     imgbuf
-}
-
-// Returns a tuple `(r, g, b)` for the RGB color for
-// a number of iterations `c` and `max_iters`.
-fn color_scheme(c: usize, max_iters: usize) -> (u8, u8, u8) {
-    let scheme = "bluey";
-
-    if c < max_iters {
-        let c = c as f64;
-        match scheme {
-            "greeny" => (
-                (255.0 * c / max_iters as f64) as u8,
-                255 as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-            ),
-            "bluey" => (
-                (255.0 * c / max_iters as f64) as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-                255 as u8,
-            ),
-            _ => todo!(),
-        }
-    } else {
-        (0, 0, 0)
-    }
 }
