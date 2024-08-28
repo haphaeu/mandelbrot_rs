@@ -37,12 +37,13 @@ Keyboard shortcuts:
  - Arrows: use arrows keys to pan the domain
  - `R` : R key to reset to default domain x (-2.5, 1), y (-1, 1)
  - `C` : change color scheme
+ - `F` : save current image to `fractal.png`
 
 # TODO
 
  - [x] more color schemes.
  - [x] switch between color schemes.
- - [ ] save current view to file
+ - [x] save current view to file
  - [ ] bring back the rectangle
  - [x] fiz mouse wheel zoom
  - [x] touchpad scroll support

@@ -181,10 +181,11 @@ impl Default for PanMode {
 // //////////////////////////////////////////////////////////////////
 
 fn model(app: &App) -> Model {
-    // Create a new window! Store the ID so we can refer to it later.
+    let (w, h) = (800, 450);
+
     let window = app
         .new_window()
-        .size(800, 450)
+        .size(w, h)
         .title("Mandelbrot Set")
         .view(view)
         .event(event)
@@ -192,7 +193,7 @@ fn model(app: &App) -> Model {
         .unwrap();
 
     let texture = wgpu::TextureBuilder::new()
-        .size([800, 450])
+        .size([w, h])
         .format(wgpu::TextureFormat::Rgba8Unorm)
         .build(app.window(window).unwrap().device());
 
@@ -223,6 +224,13 @@ fn update_mandel(app: &App, model: &mut Model) {
         model.texture = texture;
         model.flag_update = false;
     }
+}
+
+fn image2file(model: &Model) {
+    let iters = mandel(model.cfg);
+    let imgbuf = get_image_buf(&iters, model);
+    imgbuf.save("fractal.png").unwrap();
+    println!("Image saved to 'fractal.png'");
 }
 
 // Draw the state of your `Model` into the given `Frame` here.
@@ -350,6 +358,11 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
             model.cfg.ydomain.end = 1.0;
             model.flag_update = true;
         }
+
+        // F key saves image to file
+        KeyPressed(Key::F) => {
+            image2file(model);
+        }
         _ => (),
     }
 }
@@ -459,3 +472,4 @@ fn get_image_buf(
     }
     imgbuf
 }
+
