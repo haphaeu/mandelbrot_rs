@@ -12,6 +12,8 @@ mod color_schemes;
 
 fn main() {
     nannou::app(model)
+        // Vulkan works-ish in WSL. Setting this is not required in native Linux or Windows
+        //.backends(wgpu::Backends::VULKAN) 
         .loop_mode(LoopMode::Wait)
         .update(update)
         .run();
