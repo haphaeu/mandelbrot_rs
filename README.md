@@ -52,3 +52,4 @@ Keyboard shortcuts:
  - [x] touchpad scroll support
  - [x] avoid touchpad scroll event flood
  - [x] set flag to update 
+ 
