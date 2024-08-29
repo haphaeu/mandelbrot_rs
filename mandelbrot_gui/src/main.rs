@@ -1,12 +1,14 @@
-use nannou::image;
 use nannou::prelude::{
-    geom, wgpu, App, Frame, Key, KeyPressed, LoopMode, MouseMoved, MousePressed, MouseReleased,
+    geom, wgpu, App, Frame, LoopMode, 
+    Key, KeyPressed, KeyReleased,
+    MouseMoved, MousePressed, MouseReleased,
     MouseScrollDelta::LineDelta, MouseScrollDelta::PixelDelta, MouseWheel, Resized, Update, Vec2,
     WindowEvent, WindowId, BLACK, RED,
 };
+use nannou::image;
 use nannou::winit::dpi::PhysicalPosition;
-
 use mandelbrot_cli::{mandel, MandelConfig};
+mod color_schemes;
 
 fn main() {
     nannou::app(model)
@@ -20,154 +22,21 @@ struct Model {
     window: WindowId,
     texture: wgpu::Texture,
     cfg: MandelConfig,
-    pan_mode: PanMode,
-    color_schemes: ColorSchemes,
+    pan_mode: SelectMode,
+    rect_mode: SelectMode,
+    color_schemes: color_schemes::ColorSchemes,
     float_format_precision: usize,
     flag_update: bool,
 }
 
-struct ColorSchemes {
-    color_schemes: Vec<Box<dyn MandelRGB>>,
-    index_current: usize,
-}
-impl ColorSchemes {
-    fn new() -> Self {
-        Self {
-            color_schemes: vec![
-                Box::new(Bluey {}),
-                Box::new(Greeny {}),
-                Box::new(Purply {}),
-                Box::new(Weirdy {}),
-                Box::new(GreyeyDark {}),
-                Box::new(GreyeyLight {}),
-            ],
-            index_current: 0,
-        }
-    }
-    fn get(&self) -> &Box<dyn MandelRGB> {
-        &self.color_schemes[self.index_current]
-    }
-    fn next(&mut self) {
-        if self.index_current == self.color_schemes.len() - 1 {
-            self.index_current = 0;
-        } else {
-            self.index_current += 1;
-        }
-    }
-}
-// Color schemes ////////////////////////////////////////////////////
-//               ///////////////////////////////
-// Color schemes must be implemented as structs that implement
-// the `MandelRGB` trait, ie, they must have a function that
-// take 2 `usize` parameters, `c` and `max_iters`, and return a
-// 3-tuple of type `u8` with the RGB values of a color.
-trait MandelRGB {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8);
-}
-
-struct Bluey {}
-impl MandelRGB for Bluey {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            (
-                (255.0 * c / max_iters as f64) as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-                255 as u8,
-            )
-        } else {
-            (0, 0, 0)
-        }
-    }
-}
-struct Greeny {}
-impl MandelRGB for Greeny {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            (
-                (255.0 * c / max_iters as f64) as u8,
-                255 as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-            )
-        } else {
-            (0, 0, 0)
-        }
-    }
-}
-struct Purply {}
-impl MandelRGB for Purply {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            let m = max_iters as f64;
-            (
-                (255.0 * c / m) as u8,
-                (255.0 * c / m) as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-            )
-        } else {
-            (0, 0, 0)
-        }
-    }
-}
-struct Weirdy {}
-impl MandelRGB for Weirdy {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            let m = max_iters as f64;
-            (
-                (255.0 * (2.0 * c / m) - 1.0).abs() as u8,
-                (255.0 * c / m) as u8,
-                (255.0 * c / (c + 8.0)) as u8,
-            )
-        } else {
-            (0, 0, 0)
-        }
-    }
-}
-struct GreyeyLight {}
-impl MandelRGB for GreyeyLight {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            let m = max_iters as f64;
-            (
-                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
-                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
-                (255.0 * (2.0 * c / m - 1.0).abs()) as u8,
-            )
-        } else {
-            (255, 255, 255)
-        }
-    }
-}
-struct GreyeyDark {}
-impl MandelRGB for GreyeyDark {
-    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
-        if c < max_iters {
-            let c = c as f64;
-            let m = max_iters as f64;
-            (
-                (255.0 * c / m) as u8,
-                (255.0 * c / m) as u8,
-                (255.0 * c / m) as u8,
-            )
-        } else {
-            (0, 0, 0)
-        }
-    }
-}
-
-/// Pan image by dragging the mouse,
-struct PanMode {
+/// Track keys and mouse moves to pan or zoom with a rectangle
+struct SelectMode {
     is_active: bool,
     start: Vec2,
     end: Vec2,
     draw: Vec2,
 }
-impl Default for PanMode {
+impl Default for SelectMode {
     fn default() -> Self {
         Self {
             is_active: false,
@@ -201,8 +70,9 @@ fn model(app: &App) -> Model {
         window,
         texture,
         cfg: MandelConfig::default(),
-        pan_mode: PanMode::default(),
-        color_schemes: ColorSchemes::new(),
+        pan_mode: SelectMode::default(),
+        rect_mode: SelectMode::default(),
+        color_schemes: color_schemes::ColorSchemes::new(),
         float_format_precision: 3,
         flag_update: false,
     }
@@ -240,6 +110,23 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     // Draw the image
     draw.texture(&model.texture).xy(model.pan_mode.draw);
+
+    // Draw the selection rectangle
+    if model.rect_mode.is_active && model.rect_mode.draw != Vec2::ZERO {
+        let [x0, y0] = model.rect_mode.start.to_array();
+        let [x1, y1] = model.rect_mode.end.to_array();
+        let points = [
+            Vec2::new(x0, y0),
+            Vec2::new(x1, y0),
+            Vec2::new(x1, y1),
+            Vec2::new(x0, y1),
+        ];
+
+        draw.polyline()
+            .weight(1.0)
+            .rgb8(255, 0, 0)
+            .points_closed(points);
+    }
 
     // Write some text
     let [x, y] = mouse2domain(app, model, model.pan_mode.end);
@@ -283,21 +170,47 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         // Mouse press - start pan
         MousePressed(_button) => {
-            model.pan_mode.is_active = true;
-            model.pan_mode.start = Vec2::new(app.mouse.x, app.mouse.y);
+            if model.rect_mode.is_active {
+                model.rect_mode.start = Vec2::new(app.mouse.x, app.mouse.y);
+                // for rect_mode, `draw` is a flag to activate drawing after 
+                // Ctrl or Shift key is pressed
+                model.rect_mode.draw = Vec2::ONE;
+            } else {
+                model.pan_mode.is_active = true;
+                model.pan_mode.start = Vec2::new(app.mouse.x, app.mouse.y);
+            }
         }
         // Mouse move - update pan, shift image buffer without calling mandel()
         MouseMoved(position) => {
             model.pan_mode.end = position;
+            model.rect_mode.end = position;
             if model.pan_mode.is_active {
+                // For pan_mode, `draw` is the offset to shift the image buffer
                 model.pan_mode.draw = model.pan_mode.end - model.pan_mode.start;
-            }
+            } 
         }
         // Mouse release - end pan, update x,y domain, call mandel()
         MouseReleased(_button) => {
-            model.pan_mode.is_active = false;
-            model.pan_mode.draw = Vec2::ZERO;
-            mouse_pan(app, model);
+            if model.pan_mode.is_active {
+                model.pan_mode.is_active = false;
+                model.pan_mode.draw = Vec2::ZERO;
+                mouse_pan(app, model);
+            } else if model.rect_mode.is_active {
+                model.rect_mode.is_active = false;
+                mouse_zoom_rect(app, model);
+            }
+        }
+        
+        // Ctrl or Shift keys zoom with rectangle
+        KeyPressed(Key::LControl) | KeyPressed(Key::LShift) => {
+            if ! model.rect_mode.is_active {
+                model.rect_mode.is_active = true;
+                model.rect_mode.draw = Vec2::ZERO;
+        }
+        }
+        KeyReleased(Key::LControl) | KeyReleased(Key::LShift) => {
+            model.rect_mode.is_active = false;
+            model.rect_mode.draw = Vec2::ZERO;
         }
 
         // Zoom with mouse wheel
@@ -400,6 +313,15 @@ fn mouse_zoom(app: &App, model: &mut Model, delta: f64) {
     model.flag_update = true;
 }
 
+/// Update mandelbrot set x and y domains after selection with mouse
+fn mouse_zoom_rect(app: &App, model: &mut Model) {
+    let [x0, y0] = mouse2domain(app, model, model.rect_mode.start);
+    let [x1, y1] = mouse2domain(app, model, model.rect_mode.end);
+    (model.cfg.xdomain.start, model.cfg.xdomain.end) = min_max(x0, x1);
+    (model.cfg.ydomain.start, model.cfg.ydomain.end) = min_max(y0, y1);
+    model.flag_update = true;
+}
+
 /// Zoom with keyboard. Update mandelbrot set x and y domains.
 fn keyboard_zoom(model: &mut Model, zoom: f64) {
     let dx = zoom * (model.cfg.xdomain.end - model.cfg.xdomain.start);
@@ -473,3 +395,11 @@ fn get_image_buf(
     imgbuf
 }
 
+/// Return a tuple `(min(a, b), max(a, b))`
+fn min_max(a: f64, b: f64) -> (f64, f64) {
+    if a < b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}

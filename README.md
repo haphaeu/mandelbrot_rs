@@ -27,15 +27,18 @@ The image is saved as `fractal.png`
 
 GUI to visualise the set dynamically.
 
-Drag the mouse to pan, wheel to zoom.
+Mouse moves:
 
+ - drag the mouse to pan
+ - scroll mouse wheel to zoom
+ - press Ctrl or Shift and drag the mouse to select a rectangle to zoom in
 
 Keyboard shortcuts:
 
- - `,`, `.` : period/comma to reduce/increase `max_iters`
- - `+`, `-` : plus/minus keys to zoom in/out
+ - `,`, `.` : reduce/increase `max_iters`
+ - `+`, `-` : zoom in/out
  - Arrows: use arrows keys to pan the domain
- - `R` : R key to reset to default domain x (-2.5, 1), y (-1, 1)
+ - `R` : reset to default domain x (-2.5, 1), y (-1, 1)
  - `C` : change color scheme
  - `F` : save current image to `fractal.png`
 
@@ -44,7 +47,7 @@ Keyboard shortcuts:
  - [x] more color schemes.
  - [x] switch between color schemes.
  - [x] save current view to file
- - [ ] bring back the rectangle
+ - [x] bring back the rectangle
  - [x] fiz mouse wheel zoom
  - [x] touchpad scroll support
  - [x] avoid touchpad scroll event flood
