@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use std::thread;
-//use std::time::SystemTime;
+use std::time::SystemTime;
 extern crate num_cpus;
 
 #[derive(Clone, Copy, Debug)]
@@ -87,7 +87,7 @@ fn mandel_worker(
 }
 
 pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
-    //let t0 = SystemTime::now();
+    let t0 = SystemTime::now();
 
     // The domain is chunked along y, meaning that each thread will
     // process along x - horizontally
@@ -148,8 +148,8 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
         iters.push(row);
     }
 
-    //let t1 = t0.elapsed().unwrap().as_millis();
-    //println!("Initialised all arrays - eta {} ms", t1);
+    let t1 = t0.elapsed().unwrap().as_millis();
+    println!("Initialised all arrays - eta {} ms", t1);
 
     // spawn of threads
     let mut handles = vec![];
@@ -181,8 +181,8 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
         hdl.join().unwrap();
     }
 
-    //let t2 = t0.elapsed().unwrap().as_millis() - t1;
-    //println!("All threads done - eta {} ms", t2);
+    let t2 = t0.elapsed().unwrap().as_millis() - t1;
+    println!("All threads done - eta {} ms", t2);
 
     // converting here from:
     //     &Vec<Arc<Mutex<Vec<usize>>>>
