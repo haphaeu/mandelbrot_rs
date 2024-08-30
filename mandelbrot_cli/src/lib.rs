@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
-use std::thread;
-//use std::time::SystemTime;
+//use std::thread;
+use threadpool::ThreadPool;
+use std::time::SystemTime;
 extern crate num_cpus;
 
 #[derive(Clone, Copy, Debug)]
@@ -87,7 +88,7 @@ fn mandel_worker(
 }
 
 pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
-    //let t0 = SystemTime::now();
+    let t0 = SystemTime::now();
 
     // The domain is chunked along y, meaning that each thread will
     // process along x - horizontally
@@ -116,12 +117,14 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
     let ydomain = Arc::new(Vec::from_iter(ydomain));
 
     // Divide y-resolution to run in parallel
-    let cpus = 4 * num_cpus::get();
-    let delta_py = cfg.resolution.y / cpus;
-    let remain_py = cfg.resolution.y % cpus;
+    let n_jobs = 8 * num_cpus::get();
+    let delta_py = cfg.resolution.y / n_jobs;
+    let remain_py = cfg.resolution.y % n_jobs;
+
+	let pool = ThreadPool::new(n_jobs);
 
     let mut chunks_py = vec![];
-    for i in 0..cpus {
+    for i in 0..n_jobs {
         chunks_py.push((i * delta_py, (i + 1) * delta_py));
     }
     {
@@ -148,11 +151,11 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
         iters.push(row);
     }
 
-    //let t1 = t0.elapsed().unwrap().as_millis();
-    //println!("Initialised all arrays - eta {} ms", t1);
+    let t1 = t0.elapsed().unwrap().as_millis();
+    println!("Initialised all arrays - eta {} ms", t1);
 
     // spawn of threads
-    let mut handles = vec![];
+/////    let mut handles = vec![];
     for (py_start, py_end) in chunks_py {
         let mut rows = vec![];
         for py in py_start..py_end {
@@ -161,7 +164,8 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
         let ydomain = Arc::clone(&ydomain);
         let xdomain = Arc::clone(&xdomain);
 
-        let hdl = thread::spawn(move || {
+/////        let hdl = pool.execute(move || {
+		pool.execute(move || {
             for py in py_start..py_end {
                 let mut row = rows[py - py_start].lock().unwrap();
                 mandel_worker(
@@ -174,15 +178,16 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
                 );
             }
         });
-        handles.push(hdl);
+/////        handles.push(hdl);
     }
 
-    for hdl in handles {
-        hdl.join().unwrap();
-    }
+/////    for hdl in handles {
+/////        hdl.join().unwrap();
+/////    }
+	pool.join();
 
-    //let t2 = t0.elapsed().unwrap().as_millis() - t1;
-    //println!("All threads done - eta {} ms", t2);
+    let t2 = t0.elapsed().unwrap().as_millis() - t1;
+    println!("All threads done - eta {} ms", t2);
 
     // converting here from:
     //     &Vec<Arc<Mutex<Vec<usize>>>>
