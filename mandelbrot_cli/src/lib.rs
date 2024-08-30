@@ -117,11 +117,12 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
     let ydomain = Arc::new(Vec::from_iter(ydomain));
 
     // Divide y-resolution to run in parallel
-    let n_jobs = 8 * num_cpus::get();
+	let cpus = 1 * num_cpus::get();
+    let n_jobs = 2 * cpus;
     let delta_py = cfg.resolution.y / n_jobs;
     let remain_py = cfg.resolution.y % n_jobs;
 
-	let pool = ThreadPool::new(n_jobs);
+	let pool = ThreadPool::new(cpus);
 
     let mut chunks_py = vec![];
     for i in 0..n_jobs {
