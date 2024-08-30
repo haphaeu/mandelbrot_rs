@@ -9,12 +9,12 @@ use mandelbrot_cli::{mandel, save_image, Domain, MandelConfig, Resolution};
 fn help() {
     eprintln!("Use:");
     eprintln!(
-        "  {} x0 x1 y0 y1 max_iters resx resy",
+        "  {} x0 x1 y0 y1 max_iters resx resy fname",
         env::args().collect::<Vec<_>>()[0]
     );
     eprintln!("Typical call:");
     eprintln!(
-        "  {} -2.5 1.0 -1.0 1.0 128 1920 1080 ",
+        "  {} -2.5 1.0 -1.0 1.0 128 1920 1080 fractal.png",
         env::args().collect::<Vec<_>>()[0]
     );
 }
@@ -41,11 +41,13 @@ fn main() {
     let args: Vec<_> = env::args().collect();
 
     let cfg: MandelConfig;
+    let fname: &str;
 
     if args.len() == 1 {
         println!("Using default values.");
         cfg = MandelConfig::new();
-    } else if args.len() != 8 {
+	fname = "fractal.png";
+    } else if args.len() != 9 {
         eprintln!("Error: invalid number of arguments.");
         help();
         process::exit(1);
@@ -57,6 +59,7 @@ fn main() {
         let max_iters = arg_parse::<usize>(&args[5], "max_iters");
         let resx = arg_parse::<usize>(&args[6], "resx");
         let resy = arg_parse::<usize>(&args[7], "resy");
+	fname = &args[8];
 
         cfg = MandelConfig {
             xdomain: Domain { start: x0, end: x1 },
@@ -76,7 +79,7 @@ fn main() {
     let t2 = t0.elapsed().unwrap().as_millis() - t1;
     println!("==> `mandel()` took {} ms", t2);
 
-    save_image(&iters, cfg.max_iters);
+    save_image(&iters, cfg.max_iters, fname);
 
     let t3 = t0.elapsed().unwrap().as_millis() - t2 - t1;
     println!("==> `save_image()` took {} ms", t3);

@@ -181,13 +181,16 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
     ret
 }
 
-pub fn save_image(iters: &Vec<Vec<usize>>, max_iters: usize) {
+pub fn save_image(iters: &Vec<Vec<usize>>, max_iters: usize, fname: &str) {
     let resy = iters.len() as u32;
     let resx = iters[0].len() as u32;
 
     let mut imgbuf = image::ImageBuffer::new(resx, resy);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-        let c = iters[y as usize][x as usize];
+	// imgbuf is indexed top-left to bottom-right,
+        // hence the y-index must be reversed:
+	//let c = iters[y as usize][x as usize];
+        let c = iters[(resy - y - 1) as usize][x as usize];
         let (mut r, mut g, mut b) = (0 as u8, 0 as u8, 0 as u8);
         if c < max_iters {
             let c = c as f32;
@@ -197,5 +200,5 @@ pub fn save_image(iters: &Vec<Vec<usize>>, max_iters: usize) {
         }
         *pixel = image::Rgb([r, g, b]);
     }
-    imgbuf.save("fractal.png").unwrap();
+    imgbuf.save(fname).unwrap();
 }
