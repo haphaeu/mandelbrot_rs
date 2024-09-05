@@ -8,7 +8,7 @@ def zoom(startx, starty, targetx, targety, frames):
     sy0, sy1 = starty
     tx0, tx1 = targetx
     ty0, ty1 = targety
-    r = 0.9
+    r = min(targetx[1] - targetx[0], targety[1] - targety[0]) ** (1 / frames)
     dx0 = (tx0 - sx0) * (1 -r) / (1 - r**(frames - 1))
     dx1 = (tx1 - sx1) * (1 -r) / (1 - r**(frames - 1))
     dy0 = (ty0 - sy0) * (1 -r) / (1 - r**(frames - 1))
