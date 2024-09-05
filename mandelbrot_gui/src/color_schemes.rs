@@ -22,6 +22,9 @@ impl ColorSchemes {
                 Box::new(Weirdy {}),
                 Box::new(GreyeyDark {}),
                 Box::new(GreyeyLight {}),
+		Box::new(Hulky {}),
+		Box::new(Wiky {}),
+		
             ],
             index_current: 0,
         }
@@ -38,6 +41,46 @@ impl ColorSchemes {
     }
 }
 
+struct Wiky {}
+impl MandelRGB for Wiky {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        if c < max_iters {
+            let q = (c as f64) / (max_iters as f64);
+	    if q < 0.16 { ( 0, 7, 100) }
+	    else if q < 0.42 { (32, 107, 203) }
+	    else if q < 0.64 { (237, 255, 255) }
+	    else if q < 0.86 { (255, 170, 0) }
+	    else { (0, 2, 0) }
+        } else {
+            (0, 0, 0)
+        }
+    }
+}
+
+struct Hulky {}
+impl MandelRGB for Hulky {
+    fn rgb(&self, c: usize, max_iters: usize) -> (u8, u8, u8) {
+        if c < max_iters {
+            let q = (c as f64) / (max_iters as f64);
+	    if q > 0.5 {
+		(
+                    (255.0 * q) as u8,
+                    255 as u8,
+                    (255.0 * q) as u8,
+		)
+	    } else {
+		(
+		    0 as u8,
+		    (255.0 * q) as u8,
+		    0 as u8,
+		)
+	    }
+		    
+        } else {
+            (0, 0, 0)
+        }
+    }
+}
 
 struct Bluey {}
 impl MandelRGB for Bluey {
