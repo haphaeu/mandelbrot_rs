@@ -22,7 +22,7 @@ def zoom(startx, starty, targetx, targety, frames):
        
 def run_cmd(xdomain, ydomain, resx, resy, max_iters, num):
 
-    fname = f'snaps/fractal_{num:04d}.png'
+    fname = f'_snaps/fractal_{num:04d}.png'
     if os.path.exists(fname):
         return
     
@@ -47,7 +47,7 @@ def run_ffmpeg(fps):
         '-loglevel', 'error',
         '-stats', 
         '-framerate', f'{fps}',
-        '-pattern_type', 'glob', '-i', 'snaps/*.png',
+        '-pattern_type', 'glob', '-i', '_snaps/*.png',
         '-c:v', 'libx264',
         '-crf', '15',
         '-tune', 'stillimage',
@@ -60,21 +60,34 @@ def main():
     
     # starting domains
     startx = -2.5, 1.0
-    starty = 0.0, 1.0
+    starty = -1.0, 1.0
+
+    # centre
+    centrex = -0.743643887037158704752191506114774
+    centrey = 0.131825904205311970493132056385139
+
+    # window size
+    dx, dy = 1e-15, 1e-15
     
     # target zommed-in domains
-    tgtx = -0.523110006711778, -0.523110006711743
-    tgty =  0.680764072151876,  0.680764072151898
+    tgtx = centrex - dx, centrex + dx
+    tgty = centrey - dy, centrey + dy
+
+    resx, resy = 1920, 1080
     
     # frames per sec and transition time
     fps = 60
-    ttime = 15
+    ttime = 20
     
     frames = fps * ttime
     print(f"{frames=}")
 
-    if not os.path.exists('snaps/'):
-        os.mkdir('snaps')
+    max_iters = 256
+    max_iters1 = 12000
+    factor_max_iters = (max_iters1 / max_iters) ** (1 / (frames - 1))
+
+    if not os.path.exists('_snaps/'):
+        os.mkdir('_snaps')
     
     # Run the jobs in parallel, with a progress bar
     # Note: don't go too crazy in number of processes, since
@@ -82,7 +95,8 @@ def main():
     pool = multiprocessing.Pool(2)
     jobs = []
     for i, (x, y) in enumerate(zoom(startx, starty, tgtx, tgty, frames)):
-        jobs.append((x, y, 1920, 1080, 2048, i))
+        jobs.append((x, y, resx, resy, int(max_iters), i))
+        max_iters *= factor_max_iters
 
     for _ in tqdm.tqdm(pool.imap_unordered(worker, jobs), total=len(jobs)):
         pass

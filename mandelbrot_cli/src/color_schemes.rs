@@ -32,12 +32,14 @@ impl ColorSchemes {
     pub fn get(&self) -> &Box<dyn MandelRGB> {
         &self.color_schemes[self.index_current]
     }
-    pub fn next(&mut self) {
+    // Returning `self` allow chained-calls: `.next().next()...`
+    pub fn next(&mut self) -> &mut Self {
         if self.index_current == self.color_schemes.len() - 1 {
             self.index_current = 0;
         } else {
             self.index_current += 1;
         }
+	self
     }
 }
 

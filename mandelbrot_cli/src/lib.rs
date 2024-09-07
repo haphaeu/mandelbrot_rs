@@ -4,6 +4,9 @@ use threadpool::ThreadPool;
 //use std::time::SystemTime;
 extern crate num_cpus;
 
+pub mod color_schemes;
+use color_schemes::ColorSchemes;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Resolution {
     pub x: usize,
@@ -181,24 +184,22 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
     ret
 }
 
-pub fn save_image(iters: &Vec<Vec<usize>>, max_iters: usize, fname: &str) {
+/// Return a buffer with the image of the mandelbrot set
+pub fn get_image_buf(
+    iters: &Vec<Vec<usize>>,
+    max_iters: usize,
+    color_schemes: ColorSchemes,
+) -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     let resy = iters.len() as u32;
     let resx = iters[0].len() as u32;
 
     let mut imgbuf = image::ImageBuffer::new(resx, resy);
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-	// imgbuf is indexed top-left to bottom-right,
+        // imgbuf is indexed top-left to bottom-right,
         // hence the y-index must be reversed:
-	//let c = iters[y as usize][x as usize];
         let c = iters[(resy - y - 1) as usize][x as usize];
-        let (mut r, mut g, mut b) = (0 as u8, 0 as u8, 0 as u8);
-        if c < max_iters {
-            let c = c as f32;
-            r = (255.0 * c / max_iters as f32) as u8;
-            g = 255 as u8;
-            b = (255.0 * c / (c + 8.0)) as u8;
-        }
+        let (r, g, b) = color_schemes.get().rgb(c, max_iters);
         *pixel = image::Rgb([r, g, b]);
     }
-    imgbuf.save(fname).unwrap();
+    imgbuf
 }

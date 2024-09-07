@@ -4,6 +4,9 @@ Implementation in Rust of the Mandelbrot set.
 
 ![Mandelbrot set](fractal.png)
 
+
+§[Animation](https://www.youtube.com/watch?v=PxpqSaIbplE)
+
 # `mandelbrot_cli`
 
 Low level library and CLI to get a static image of the set.

@@ -7,8 +7,7 @@ use nannou::prelude::{
 };
 use nannou::image;
 use nannou::winit::dpi::PhysicalPosition;
-use mandelbrot_cli::{mandel, MandelConfig};
-mod color_schemes;
+use mandelbrot_cli::{mandel, MandelConfig, color_schemes};
 
 fn main() {
     nannou::app(model)

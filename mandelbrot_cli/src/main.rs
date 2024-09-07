@@ -4,7 +4,14 @@ use std::process;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-use mandelbrot_cli::{mandel, save_image, Domain, MandelConfig, Resolution};
+use mandelbrot_cli::{
+    mandel,
+    get_image_buf,
+    Domain,
+    MandelConfig,
+    Resolution,
+    color_schemes::ColorSchemes
+};
 
 fn help() {
     eprintln!("Use:");
@@ -79,7 +86,10 @@ fn main() {
     let t2 = t0.elapsed().unwrap().as_millis() - t1;
     println!("==> `mandel()` took {} ms", t2);
 
-    save_image(&iters, cfg.max_iters, fname);
+    let mut color_schemes = ColorSchemes::new();
+    color_schemes.next().next().next().next().next().next().next();
+    get_image_buf(&iters, cfg.max_iters, color_schemes)
+	.save(fname).unwrap();
 
     let t3 = t0.elapsed().unwrap().as_millis() - t2 - t1;
     println!("==> `save_image()` took {} ms", t3);
