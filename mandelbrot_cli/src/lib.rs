@@ -1,6 +1,5 @@
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
-use threadpool::ThreadPool;
+use std::thread;
 //use std::time::SystemTime;
 extern crate num_cpus;
 
@@ -105,7 +104,6 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
             xdomain.push(start + step * i as f64)
         }
     }
-    let xdomain = Arc::new(Vec::from_iter(xdomain));
 
     let mut ydomain = vec![];
     {
@@ -116,19 +114,10 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
             ydomain.push(start + step * i as f64)
         }
     }
-    let ydomain = Arc::new(Vec::from_iter(ydomain));
-
-    // Divide y-resolution to run in parallel
-    let cpus = 4 * num_cpus::get();
-    let pool = ThreadPool::new(cpus);
 
     // Matrix with number of Mandelbrot iterations:
     //
     //    iters[pixel_y][pixel_x]
-    //
-    // Must wrap each vector item in an `Arc<Mutex>` since the rows will
-    // be updated in parallel by multiple threads. So the type of `iters`
-    // is `Vec<Arc<Mutex<Vec<usize>>>>` since multiple threads
     //
     let mut iters = vec![];
     for _ in 0..cfg.resolution.y {
@@ -136,52 +125,32 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
         // the capacity. Will need to change the workers too to `push`
         // instead of assining by indes.
         //let row = Arc::new(Mutex::new(vec![0; cfg.resolution.x]));
-        let row = Arc::new(Mutex::new(Vec::with_capacity(cfg.resolution.x)));
+        let row = Vec::with_capacity(cfg.resolution.x);
         iters.push(row);
     }
 
     //let t1 = t0.elapsed().unwrap().as_millis();
     //println!("Initialised all arrays - eta {} ms", t1);
 
-	// sends jobs to the threadpool. each job processes one row
-	for py in 0..cfg.resolution.y {
-		
-	    let ydomain = Arc::clone(&ydomain);
-            let xdomain = Arc::clone(&xdomain);
-	    let row = Arc::clone(&iters[py]);
-		
-	    pool.execute(move || {
-		mandel_worker(
-		    &mut row.lock().unwrap(),
-		    ydomain[py],
-		    &xdomain,
-		    cfg.resolution.x,
-		    cfg.max_iters,
-		    cfg.threshold,
-		);
-	    });
-	}
-    pool.join();
+    thread::scope(|scope| {
+        for (py, row) in iters.iter_mut().enumerate() {
+            let y0 = f64::clone(&ydomain[py]);
+            let xd = xdomain.clone();
+            scope.spawn(move || {
+                mandel_worker(
+                    row, y0, &xd, cfg.resolution.x, cfg.max_iters, cfg.threshold,
+                );
+            });
+	    }
+    });
 
     //let t2 = t0.elapsed().unwrap().as_millis() - t1;
     //println!("All threads done - et {t2} ms");
 
-    // converting here from:
-    //     &Vec<Arc<Mutex<Vec<usize>>>>
-    // to
-    //     &Vec<Vec<usize>>
-    //
-    // https://stackoverflow.com/questions/78768409/fill-a-matrix-in-
-    // parallel-how-to-convert-vecarcmutexvec-to-vecvec
-    let mut ret = vec![];
-    for row in iters {
-        ret.push(Mutex::into_inner(Arc::into_inner(row).unwrap()).unwrap());
-    }
-
     //let t3 = t0.elapsed().unwrap().as_millis() - t1 - t2;
     //println!("Conversion done - eta {} ms", t3);
 
-    ret
+    iters
 }
 
 /// Return a buffer with the image of the mandelbrot set
