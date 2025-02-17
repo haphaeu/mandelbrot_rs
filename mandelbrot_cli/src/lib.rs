@@ -1,7 +1,10 @@
 use std::fmt::Debug;
-use std::thread;
 //use std::time::SystemTime;
 extern crate num_cpus;
+
+extern crate scoped_thread_pool;
+use scoped_thread_pool::Pool;
+
 
 pub mod color_schemes;
 use color_schemes::ColorSchemes;
@@ -132,11 +135,13 @@ pub fn mandel(cfg: MandelConfig) -> Vec<Vec<usize>> {
     //let t1 = t0.elapsed().unwrap().as_millis();
     //println!("Initialised all arrays - eta {} ms", t1);
 
-    thread::scope(|scope| {
+    let pool = Pool::new(4 * num_cpus::get());
+
+    pool.scoped(|scope| {
         for (py, row) in iters.iter_mut().enumerate() {
             let y0 = f64::clone(&ydomain[py]);
             let xd = xdomain.clone();
-            scope.spawn(move || {
+            scope.execute(move || {
                 mandel_worker(
                     row, y0, &xd, cfg.resolution.x, cfg.max_iters, cfg.threshold,
                 );
