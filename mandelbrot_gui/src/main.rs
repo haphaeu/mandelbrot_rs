@@ -9,7 +9,15 @@ use nannou::image;
 use nannou::winit::dpi::PhysicalPosition;
 use mandelbrot_cli::{mandel, MandelConfig, color_schemes};
 
+use env_logger::Builder;
+use log::debug;
+
 fn main() {
+
+    // for debugging, do `set MANDEL_LOG=mandelbrot_gui=debug` in cmd
+    Builder::from_env("MANDEL_LOG").init();
+    debug!("Logger initialized");
+
     nannou::app(model)
         // Vulkan works-ish in WSL. Setting this is not required in native Linux or Windows
         //.backends(wgpu::Backends::VULKAN) 
@@ -80,13 +88,13 @@ fn model(app: &App) -> Model {
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    //println!("{_update:?}");
     update_mandel(app, model)
 }
 
 /// Update image after changes in `model.cfg`
 fn update_mandel(app: &App, model: &mut Model) {
     if model.flag_update {
+        debug!("update_mandel");
         let iters = mandel(model.cfg);
         let imgbuf = get_image_buf(&iters, model);
         let image = image::DynamicImage::ImageRgb8(imgbuf);
@@ -94,6 +102,10 @@ fn update_mandel(app: &App, model: &mut Model) {
         model.float_format_precision = get_ffmt_precision(model);
         model.texture = texture;
         model.flag_update = false;
+
+        debug!("model updated");
+        debug!("    model.cfg {:?}", model.cfg);
+        debug!("    model.texture {:?}", model.texture);
     }
 }
 
@@ -157,20 +169,23 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
 /// Handle events related to the window and update the model if necessary
 fn event(app: &App, model: &mut Model, event: WindowEvent) {
-    //println!("{event:?}");
+    //debug!("{event:?}");
     match event {
         // Window resize - update resolution
         Resized(size) => {
             if size != Vec2::ZERO {
                 let size = size.to_array();
-                let sf = app.window(model.window).unwrap().scale_factor();
+                let sf = 1.0; //app.window(model.window).unwrap().scale_factor();
                 model.cfg.resolution.x = (sf * size[0]) as usize;
                 model.cfg.resolution.y = (sf * size[1]) as usize;
                 model.flag_update = true;
+
+                debug!("{event:?} res x={:?}, y={:?}", model.cfg.resolution.x, model.cfg.resolution.y);
             }
         }
         // Mouse press - start pan
         MousePressed(_button) => {
+            debug!("{event:?} x={:?}, y={:?}", app.mouse.x, app.mouse.y);
             if model.rect_mode.is_active {
                 model.rect_mode.start = Vec2::new(app.mouse.x, app.mouse.y);
                 // for rect_mode, `draw` is a flag to activate drawing after 
@@ -192,6 +207,7 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         }
         // Mouse release - end pan, update x,y domain, call mandel()
         MouseReleased(_button) => {
+            debug!("{event:?} x={:?}, y={:?}", app.mouse.x, app.mouse.y);
             if model.pan_mode.is_active {
                 model.pan_mode.is_active = false;
                 model.pan_mode.draw = Vec2::ZERO;
@@ -204,12 +220,14 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
         
         // Ctrl or Shift keys zoom with rectangle
         KeyPressed(Key::LControl) | KeyPressed(Key::LShift) => {
+            debug!("{event:?}");
             if ! model.rect_mode.is_active {
                 model.rect_mode.is_active = true;
                 model.rect_mode.draw = Vec2::ZERO;
         }
         }
         KeyReleased(Key::LControl) | KeyReleased(Key::LShift) => {
+            debug!("{event:?}");
             model.rect_mode.is_active = false;
             model.rect_mode.draw = Vec2::ZERO;
         }
@@ -344,6 +362,10 @@ fn mouse_pan(app: &App, model: &mut Model) {
     model.cfg.ydomain.start -= dy;
     model.cfg.ydomain.end -= dy;
     model.flag_update = true;
+
+    debug!("Mouse Pan");
+    debug!("    mouse from {:?} to {:?}", model.pan_mode.start, model.pan_mode.end);
+    debug!("    domain from ({}, {}) to ({}, {})", x0, y0, x1, y1);
 }
 
 /// Pan with keyboard. Update mandelbrot set x and y domains.
@@ -359,6 +381,7 @@ fn keyboard_pan(model: &mut Model, panx: f64, pany: f64) {
 
 /// Converts a window-relative `position` into Mandelbrot x,y domain
 fn mouse2domain(app: &App, model: &Model, position: Vec2) -> [f64; 2] {
+
     let [px, py] = position.to_array();
     let (w, h) = app.window(model.window).unwrap().inner_size_points();
 
